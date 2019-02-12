@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <math.h>
+#include <unistd.h>
 
 /*
 	Queue which will serve as a line
@@ -79,6 +81,16 @@ struct dayReport
 	float *teamFreeTimes;
 };
 
+/*
+	Function that each thread calls in order to wait while being served
+*/
+void *beClothed(void *costumingTime)
+{
+	
+	sleep(*(int *)costumingTime);
+	return NULL;
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -99,8 +111,8 @@ int main(int argc, char *argv[])
 	float avgNinjaArrival = atof(argv[7]);
 
 	// Create the lines for both pirates and ninjas
-	struct queue pirateQueue;
-	struct queue ninjaQueue;
+	struct queue *pirateQueue;
+	struct queue *ninjaQueue;
 
 	// If the user's input violates any of the min or max numbers, let them know and stop execution.
 	if((4 < numCostumingTeams) || (numCostumingTeams < 2))
@@ -143,7 +155,11 @@ int main(int argc, char *argv[])
 
 	for(int i=0; i<numPirates; i++)
 	{
+		
 		// Create a random pirate thread
+		int randomNum = 10; // TODO make this actually random
+		pthread_t *ourPirate = malloc(sizeof(pthread_t));
+		pthread_create(ourPirate, NULL, beClothed, &randomNum);
 		// Put it into the line
 	}
 

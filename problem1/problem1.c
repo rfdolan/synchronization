@@ -20,6 +20,8 @@ int room3occupied;
 int room4occupied;
 int numPiratesInside;
 int numNinjasInside;
+struct node *pirateQueue;
+struct node *ninjaQueue;
 
 void initializeGlobals(int numTeams)
 {
@@ -42,6 +44,8 @@ void initializeGlobals(int numTeams)
 	}
 	numPiratesInside = 0;
 	numNinjasInside = 0;
+	pirateQueue = NULL;
+	ninjaQueue = NULL;
 }
 
 /*
@@ -125,18 +129,59 @@ struct customer
 	int idNum;	// A number to identify our customer
 	int arrivalTime; // The time they will arrive
 	int costumingTime; // The time they will take in the store
+	int roomNumber;
 
 };
+
+/*
+	Function to leave a dressing room
+*/
+void leave(int roomNum)
+{
+	
+	switch(roomNum)
+	{
+		case 4:
+			pthread_mutex_trylock(&room4lock);
+			room4occupied = 0;
+			
+			pthread_mutex_unlock(&room4lock);
+			break;
+			
+		case 3:
+					
+			pthread_mutex_trylock(&room3lock);
+			room3occupied = 0;
+			
+			pthread_mutex_unlock(&room3lock);
+			break;
+		case 2:
+							
+			pthread_mutex_trylock(&room2lock);
+			room2occupied = 0;
+			
+			pthread_mutex_unlock(&room2lock);
+			break;
+		case 1:
+			pthread_mutex_trylock(&room1lock);
+			room1occupied = 0;
+			
+			pthread_mutex_unlock(&room1lock);
+			break;
+	}
+
+}
 
 
 /*
 	Function that each thread calls in order to wait while being served
 */
-void *beClothed(void *costumingTime)
+void *beClothed(void *cust)
 {
-	printf("I'm finna sleep for %d minutes.\n", *(int *)costumingTime);	
-	sleep(*(int *)costumingTime);
-
+	struct customer *ourCust = (struct customer *)cust;
+	printf("I'm finna sleep for %d minutes.\n", ourCust->costumingTime);	
+	sleep(ourCust->costumingTime);
+	leave(ourCust->roomNumber);
 	printf("I'm outta here.\n");
 	return NULL;
 }
@@ -160,6 +205,7 @@ struct customer *createCustomer(float avgArrivalTime, float avgCostumingTime, in
 	newCust->arrivalTime = arrivalTime;
 	newCust->costumingTime = costumingTime;
 	newCust->idNum = id;
+	newCust->roomNumber = 0;
 	
 	return newCust;
 
@@ -170,7 +216,7 @@ struct customer *createCustomer(float avgArrivalTime, float avgCostumingTime, in
 */
 void doThread(struct customer *ourCust)
 {
-	pthread_create(ourCust->thread, NULL, beClothed, &ourCust->costumingTime);
+	pthread_create(ourCust->thread, NULL, beClothed, ourCust);
 }
 
 /*
@@ -188,16 +234,17 @@ struct node
 /*
 	Method to place a thread at the correct place in line based on arrival time
 */
-struct node *enqueue(struct node *head, struct customer *ourCust)
+void enqueuePirate(struct customer *ourCust)
 {
 	struct customer *currentCust;
 	// If the head is null, allocate space for a new head
-	if(head == NULL)
+	if(pirateQueue == NULL)
 	{
 		struct node *newHead = malloc(sizeof(struct node));
 		newHead->cust = ourCust;
 		newHead->next = NULL;
-		return newHead;
+		pirateQueue = newHead;
+		return;
 	}
 
 	// If we belong at the front of the line, make it so
@@ -205,14 +252,15 @@ struct node *enqueue(struct node *head, struct customer *ourCust)
 	struct node *newNode = malloc(sizeof(struct node));
 	newNode->cust = ourCust;
 
-	if(ourCust->arrivalTime < head->cust->arrivalTime)
+	if(ourCust->arrivalTime < pirateQueue->cust->arrivalTime)
 	{
-		newNode->next = head;
-		return newNode;
+		newNode->next = pirateQueue;
+		pirateQueue = newNode;
+		return;
 	}	
 
 	// If not, go down the queue and find the end
-	struct node *current = head;	
+	struct node *current = pirateQueue;	
 	while(current->next != NULL)
 	{
 
@@ -222,36 +270,108 @@ struct node *enqueue(struct node *head, struct customer *ourCust)
 		{
 			newNode->next = current->next;
 			current->next = newNode;
-			return head;
+			return;
 		}
 		current = current->next;
 	}
 	// Allocate space for the new node
 	newNode->next = NULL;	
 	current->next = newNode;
-	return head;
+	return;
 }
 
 
 /*
 	Method to remove a thread from the front of the line
 */
-struct node *dequeue(struct node *head)
+void dequeuePirate()
 {
 	// If our head is the only one in line, return an empty line
-	if(head->next == NULL)
+	if(pirateQueue->next == NULL)
 	{
-		free(head);
-		return NULL;
+		free(pirateQueue);
+		pirateQueue = NULL;
+		return;
 	}
 	// Else return a pointer to the new head of the line
-	struct node *current = head->next;
-	free(head);
-	return current;
+	struct node *current = pirateQueue->next;
+	free(pirateQueue);
+	pirateQueue = current;	
+	return;
 }
 
-struct node *checkRooms(int numTeams, struct node *queue){
+/*
+	Method to place a thread at the correct place in line based on arrival time
+*/
+void enqueueNinja(struct customer *ourCust)
+{
+	struct customer *currentCust;
+	// If the head is null, allocate space for a new head
+	if(ninjaQueue == NULL)
+	{
+		struct node *newHead = malloc(sizeof(struct node));
+		newHead->cust = ourCust;
+		newHead->next = NULL;
+		ninjaQueue = newHead;
+		return;
+	}
 
+	// If we belong at the front of the line, make it so
+
+	struct node *newNode = malloc(sizeof(struct node));
+	newNode->cust = ourCust;
+
+	if(ourCust->arrivalTime < ninjaQueue->cust->arrivalTime)
+	{
+		newNode->next = ninjaQueue;
+		ninjaQueue = newNode;
+		return;
+	}	
+
+	// If not, go down the queue and find the end
+	struct node *current = ninjaQueue;	
+	while(current->next != NULL)
+	{
+
+		currentCust = current->next->cust;
+		// If we are arriving before the next node, scoot in front of it
+		if(ourCust->arrivalTime < currentCust->arrivalTime)
+		{
+			newNode->next = current->next;
+			current->next = newNode;
+			return;
+		}
+		current = current->next;
+	}
+	// Allocate space for the new node
+	newNode->next = NULL;	
+	current->next = newNode;
+	return;
+}
+
+
+/*
+	Method to remove a thread from the front of the line
+*/
+void dequeueNinja()
+{
+	// If our head is the only one in line, return an empty line
+	if(ninjaQueue->next == NULL)
+	{
+		free(ninjaQueue);
+		ninjaQueue = NULL;
+		return;
+	}
+	// Else return a pointer to the new head of the line
+	struct node *current = ninjaQueue->next;
+	free(ninjaQueue);
+	ninjaQueue = current;	
+	return;
+}
+
+void checkRoomsPirate(int numTeams){
+
+	// For each room, check the room, and if it's unlocked enter. (When checking the room, make sure to lock!)
 	switch(numTeams)
 	{
 		case 4:
@@ -259,9 +379,10 @@ struct node *checkRooms(int numTeams, struct node *queue){
 			if(!room4occupied)
 			{
 				room4occupied = 1;
-				doThread(queue->cust);
+				pirateQueue->cust->roomNumber = 4;
+				doThread(pirateQueue->cust);
 				pthread_mutex_unlock(&room4lock);
-				return dequeue(queue);	
+				dequeuePirate();	
 			}
 			pthread_mutex_unlock(&room4lock);
 		case 3:
@@ -270,9 +391,10 @@ struct node *checkRooms(int numTeams, struct node *queue){
 			if(!room3occupied)
 			{
 				room3occupied = 1;
-				doThread(queue->cust);
+				pirateQueue->cust->roomNumber = 3;
+				doThread(pirateQueue->cust);
 				pthread_mutex_unlock(&room3lock);
-				return dequeue(queue);	
+				dequeuePirate();	
 			}
 			pthread_mutex_unlock(&room3lock);
 		case 2:
@@ -282,9 +404,10 @@ struct node *checkRooms(int numTeams, struct node *queue){
 			{
 				printf("I got a room!\n");
 				room2occupied = 1;
-				doThread(queue->cust);
+				pirateQueue->cust->roomNumber = 2;
+				doThread(pirateQueue->cust);
 				pthread_mutex_unlock(&room2lock);
-				return dequeue(queue);
+				dequeuePirate();
 			}
 			pthread_mutex_unlock(&room2lock);
 			
@@ -293,13 +416,68 @@ struct node *checkRooms(int numTeams, struct node *queue){
 			{
 				printf("I got a room!");
 				room1occupied = 1;
-				doThread(queue->cust);
+				pirateQueue->cust->roomNumber = 1;
+				doThread(pirateQueue->cust);
 				pthread_mutex_unlock(&room1lock);
-				return dequeue(queue);
+				dequeuePirate();
 			}
 			pthread_mutex_unlock(&room1lock);
 	}
-	return queue;
+}
+
+void checkRoomsNinja(int numTeams){
+
+	switch(numTeams)
+	{
+		case 4:
+			pthread_mutex_trylock(&room4lock);
+			if(!room4occupied)
+			{
+				room4occupied = 1;
+				ninjaQueue->cust->roomNumber = 4;
+				doThread(ninjaQueue->cust);
+				pthread_mutex_unlock(&room4lock);
+				dequeueNinja();	
+			}
+			pthread_mutex_unlock(&room4lock);
+		case 3:
+					
+			pthread_mutex_trylock(&room3lock);
+			if(!room3occupied)
+			{
+				room3occupied = 1;
+				ninjaQueue->cust->roomNumber = 3;
+				doThread(ninjaQueue->cust);
+				pthread_mutex_unlock(&room3lock);
+				dequeueNinja();	
+			}
+			pthread_mutex_unlock(&room3lock);
+		case 2:
+							
+			pthread_mutex_trylock(&room2lock);
+			if(!room2occupied)
+			{
+				printf("I got a room!\n");
+				room2occupied = 1;
+				ninjaQueue->cust->roomNumber = 2;
+				doThread(ninjaQueue->cust);
+				pthread_mutex_unlock(&room2lock);
+				dequeueNinja();
+			}
+			pthread_mutex_unlock(&room2lock);
+			
+			pthread_mutex_trylock(&room1lock);
+			if(!room1occupied)
+			{
+				printf("I got a room!");
+				room1occupied = 1;
+				ninjaQueue->cust->roomNumber = 1;
+				doThread(ninjaQueue->cust);
+				pthread_mutex_unlock(&room1lock);
+				dequeueNinja();
+			}
+			pthread_mutex_unlock(&room1lock);
+	}
 }
 
 int main(int argc, char *argv[])
@@ -320,11 +498,11 @@ int main(int argc, char *argv[])
 	float avgNinjaTime = atof(argv[5]);
 	float avgPirateArrival = atof(argv[6]);
 	float avgNinjaArrival = atof(argv[7]);
-
+/*
 	// Create the lines for both pirates and ninjas
 	struct node *pirateQueue = NULL;
 	struct node *ninjaQueue = NULL;
-
+*/
 	// Create bills for both the pirates and the ninjas
 	struct bill *pirateBill;
 	struct bill *ninjaBill;
@@ -374,6 +552,7 @@ int main(int argc, char *argv[])
 	ninjaBill = initBill(numNinjas);
 
 	todayReport = initDayReport(numCostumingTeams);
+	initializeGlobals(numCostumingTeams);
 
 	for(int i=0; i<numPirates; i++)
 	{
@@ -382,13 +561,13 @@ int main(int argc, char *argv[])
 		// Put the pirate into the line
 	//	printf("Pirate %d will take %d to clothe, and will mosey on over at %d.\n", 
 	//			i, currentPirate->costumingTime, currentPirate->arrivalTime);
-		pirateQueue = enqueue(pirateQueue, currentPirate);
+		enqueuePirate(currentPirate);
 		struct node *current = pirateQueue;
-	//	printf("\nThe queue currently contains: \n");
+		printf("\nThe queue currently contains: \n");
 		for(int j = 0; j<=i; j++)
 		{
 			
-		//	printf("Pirate %d arriving at %d.\n", current->cust->idNum, current->cust->arrivalTime);
+			printf("Pirate %d arriving at %d.\n", current->cust->idNum, current->cust->arrivalTime);
 			current = current->next;
 		}
 	}
@@ -400,10 +579,9 @@ int main(int argc, char *argv[])
 		// Put the ninja into the line
 		// printf("Ninja %d will take %d to clothe, and will appear at %d.\n", 
 		//		i, currentNinja->costumingTime, currentNinja->arrivalTime);
-		ninjaQueue = enqueue(ninjaQueue, currentNinja);
+		enqueueNinja(currentNinja);
 	}
 
-	initializeGlobals(numCostumingTeams);
 	/*
 	struct timeval startTime;
 	gettimeofday(&startTime, NULL);
@@ -420,7 +598,7 @@ int main(int argc, char *argv[])
 				pthread_mutex_lock(&ninjaLock);
 				if(numNinjasInside == 0)
 				{
-					pirateQueue = checkRooms(numCostumingTeams, pirateQueue);
+					checkRoomsPirate(numCostumingTeams);
 				}
 				pthread_mutex_unlock(&ninjaLock);
 			}

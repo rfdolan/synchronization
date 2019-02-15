@@ -13,6 +13,9 @@ pthread_mutex_t room3lock;
 pthread_mutex_t room4lock;
 pthread_mutex_t pirateLock;
 pthread_mutex_t ninjaLock;
+pthread_mutex_t reportLock;
+pthread_mutex_t batchLock;
+
 int room1occupied;
 int room2occupied;
 int room3occupied;
@@ -20,34 +23,27 @@ int room3occupied;
 int room4occupied;
 int numPiratesInside;
 int numNinjasInside;
+int simulationTime;
+int doingPirateBatch;
+
 struct node *pirateQueue;
 struct node *ninjaQueue;
-
-void initializeGlobals(int numTeams)
+struct dayReport *report;
+/*
+void pthread_mutex_lock(pthread_mutex_t *lock)
 {
-	switch(numTeams)
-	{
-		case 4:
-			pthread_mutex_init(&room4lock, NULL);	
-			room4occupied = 0;
-		case 3:
-			pthread_mutex_init(&room3lock, NULL);	
-			room3occupied = 0;
-		case 2:
-			pthread_mutex_init(&room1lock, NULL);	
-			room2occupied = 0;
-			pthread_mutex_init(&room2lock, NULL);	
-			room1occupied = 0;
-			pthread_mutex_init(&pirateLock, NULL);
-			pthread_mutex_init(&ninjaLock, NULL);
-			break;
-	}
-	numPiratesInside = 0;
-	numNinjasInside = 0;
-	pirateQueue = NULL;
-	ninjaQueue = NULL;
+	printf("Locking %p in thread %lu.\n", lock, pthread_self());
+	pthread_mutex_lock(lock);
+	printf("We succeeded in locking %p in thread %lu.\n", lock, pthread_self());
 }
 
+void pthread_mutex_unlock(pthread_mutex_t *lock)
+{
+	printf("Unocking %p.\n", lock);
+	pthread_mutex_unlock(lock);
+	printf("We succeeded in unlocking %p.\n", lock);
+}
+*/
 /*
 	Struct to hold the statistics for the pirates and ninjas
 */
@@ -94,12 +90,13 @@ struct dayReport
 	// Calculate profit by doing (grossRevenue - (5 * numTeams))
 	int *teamBusyTimes;
 	int *teamFreeTimes;
+	int unhappyCustomers;
 };
 
 /*
 	Initialize the day report
 */
-struct dayReport *initDayReport(int numTeams)
+void initDayReport(int numTeams)
 {
 	struct dayReport *newReport = malloc(sizeof(struct dayReport));
 	newReport->averageQueueLength = 0;
@@ -107,7 +104,65 @@ struct dayReport *initDayReport(int numTeams)
 	newReport->goldPerVisit = 0;
 	newReport->teamBusyTimes = malloc(numTeams * sizeof(int));
 	newReport->teamFreeTimes = malloc(numTeams * sizeof(int));	
-	return newReport;
+	newReport->unhappyCustomers = 0;
+	report = newReport;
+}
+
+/*
+	Function to update the daily report with some statistics
+*/
+void updateDayReport(int numTeams)
+{
+	// Update the free and busy times
+	switch(numTeams)
+	{
+		case 4:
+			pthread_mutex_lock(&room4lock);
+			if(room4occupied)
+			{
+				report->teamBusyTimes[3] += 1;
+			}
+			else
+			{
+				report->teamFreeTimes[3] += 1;
+			}
+			pthread_mutex_unlock(&room4lock);	
+		case 3:
+			pthread_mutex_lock(&room3lock);
+			if(room3occupied)
+			{
+				report->teamBusyTimes[2] += 1;
+			}
+			else
+			{
+				report->teamFreeTimes[2] += 1;
+			}
+			pthread_mutex_unlock(&room3lock);	
+		case 2:
+
+			pthread_mutex_lock(&room2lock);
+			if(room2occupied)
+			{
+				report->teamBusyTimes[1] += 1;
+			}
+			else
+			{
+				report->teamFreeTimes[1] += 1;
+			}
+			pthread_mutex_unlock(&room2lock);	
+			pthread_mutex_lock(&room1lock);
+			if(room1occupied)
+			{
+				report->teamBusyTimes[0] += 1;
+			}
+			else
+			{
+				report->teamFreeTimes[0] += 1;
+			}
+			pthread_mutex_unlock(&room1lock);	
+	}
+	
+	
 }
 
 /*
@@ -130,66 +185,15 @@ struct customer
 	int arrivalTime; // The time they will arrive
 	int costumingTime; // The time they will take in the store
 	int roomNumber;
-
+	int isPirate;
+	int timeServed;
 };
 
-/*
-	Function to leave a dressing room
-*/
-void leave(int roomNum)
-{
-	
-	switch(roomNum)
-	{
-		case 4:
-			pthread_mutex_trylock(&room4lock);
-			room4occupied = 0;
-			
-			pthread_mutex_unlock(&room4lock);
-			break;
-			
-		case 3:
-					
-			pthread_mutex_trylock(&room3lock);
-			room3occupied = 0;
-			
-			pthread_mutex_unlock(&room3lock);
-			break;
-		case 2:
-							
-			pthread_mutex_trylock(&room2lock);
-			room2occupied = 0;
-			
-			pthread_mutex_unlock(&room2lock);
-			break;
-		case 1:
-			pthread_mutex_trylock(&room1lock);
-			room1occupied = 0;
-			
-			pthread_mutex_unlock(&room1lock);
-			break;
-	}
-
-}
-
-
-/*
-	Function that each thread calls in order to wait while being served
-*/
-void *beClothed(void *cust)
-{
-	struct customer *ourCust = (struct customer *)cust;
-	printf("I'm finna sleep for %d minutes.\n", ourCust->costumingTime);	
-	sleep(ourCust->costumingTime);
-	leave(ourCust->roomNumber);
-	printf("I'm outta here.\n");
-	return NULL;
-}
 
 /*
 	Create and return a customer
 */
-struct customer *createCustomer(float avgArrivalTime, float avgCostumingTime, int id)
+struct customer *createCustomer(float avgArrivalTime, float avgCostumingTime, int id, int isPirate)
 {
 
 	struct customer *newCust = malloc(sizeof(struct customer));
@@ -206,17 +210,11 @@ struct customer *createCustomer(float avgArrivalTime, float avgCostumingTime, in
 	newCust->costumingTime = costumingTime;
 	newCust->idNum = id;
 	newCust->roomNumber = 0;
+	newCust->isPirate = isPirate;
+	newCust->timeServed = 0;
 	
 	return newCust;
 
-}
-
-/*
-	Create and run the thread
-*/
-void doThread(struct customer *ourCust)
-{
-	pthread_create(ourCust->thread, NULL, beClothed, ourCust);
 }
 
 /*
@@ -349,6 +347,122 @@ void enqueueNinja(struct customer *ourCust)
 	return;
 }
 
+/*
+	Function to leave a dressing room
+*/
+void leave(struct customer *cust)
+{
+	if(cust->isPirate)
+	{
+		pthread_mutex_lock(&pirateLock);
+		numPiratesInside--;
+		pthread_mutex_unlock(&pirateLock);
+	}
+	else
+	{
+		pthread_mutex_lock(&ninjaLock);
+		numNinjasInside--;
+		pthread_mutex_unlock(&ninjaLock);
+	}
+	switch(cust->roomNumber)
+	{
+		case 4:
+			pthread_mutex_trylock(&room4lock);
+			room4occupied = 0;
+			
+			pthread_mutex_unlock(&room4lock);
+			break;
+			
+		case 3:
+					
+			pthread_mutex_trylock(&room3lock);
+			room3occupied = 0;
+			
+			pthread_mutex_unlock(&room3lock);
+			break;
+		case 2:
+							
+			pthread_mutex_trylock(&room2lock);
+			room2occupied = 0;
+			
+			pthread_mutex_unlock(&room2lock);
+			break;
+		case 1:
+			pthread_mutex_trylock(&room1lock);
+			room1occupied = 0;
+			
+			pthread_mutex_unlock(&room1lock);
+			break;
+	}
+
+	pthread_mutex_lock(&reportLock);
+	// Update the report
+	report->goldPerVisit += 1;
+	if((cust->timeServed - 30) > cust->arrivalTime)
+	{
+		report->unhappyCustomers += 1;	
+	}
+	else
+	{
+		report->grossRevenue += (cust->costumingTime * 1);
+	}
+	
+
+
+	pthread_mutex_unlock(&reportLock);
+	int chance =(int)(rand() %4);
+	// If they are coming back, then re queue them
+	if(chance == 0)
+	{
+		cust->arrivalTime = simulationTime + cust->arrivalTime;
+		if(cust->isPirate)
+		{
+			enqueuePirate(cust);
+		}
+		else
+		{
+			enqueueNinja(cust);
+		}
+	}		
+}
+
+
+/*
+	Function that each thread calls in order to wait while being served
+*/
+void *beClothed(void *cust)
+{
+	struct customer *ourCust = (struct customer *)cust;
+	ourCust->timeServed = simulationTime;
+	sleep(ourCust->costumingTime);
+	leave(ourCust);
+	if(ourCust->isPirate)
+	{
+		printf("Pirate number %d is leaving room %d.\n", ourCust->idNum, ourCust->roomNumber);
+	}
+	else
+	{
+
+		printf("Ninja number %d is leaving room %d.\n", ourCust->idNum, ourCust->roomNumber);
+	}
+	if(ourCust->arrivalTime > ourCust->timeServed)
+	{
+		printf("They will be returning at %d.\n", ourCust->arrivalTime);
+	}
+	else
+	{
+		printf("They won't be coming back today.\n");
+	}
+	return NULL;
+}
+
+/*
+	Create and run the thread
+*/
+void doThread(struct customer *ourCust)
+{
+	pthread_create(ourCust->thread, NULL, beClothed, ourCust);
+}
 
 /*
 	Method to remove a thread from the front of the line
@@ -378,11 +492,16 @@ void checkRoomsPirate(int numTeams){
 			pthread_mutex_trylock(&room4lock);
 			if(!room4occupied)
 			{
+				numPiratesInside += 1;
+				doingPirateBatch = 0;
 				room4occupied = 1;
 				pirateQueue->cust->roomNumber = 4;
+				printf("Pirate %d is entering room %d.\n", pirateQueue->cust->idNum, 4);
 				doThread(pirateQueue->cust);
 				pthread_mutex_unlock(&room4lock);
 				dequeuePirate();	
+				pthread_mutex_unlock(&room4lock);
+				break;
 			}
 			pthread_mutex_unlock(&room4lock);
 		case 3:
@@ -390,11 +509,16 @@ void checkRoomsPirate(int numTeams){
 			pthread_mutex_trylock(&room3lock);
 			if(!room3occupied)
 			{
+				numPiratesInside += 1;
+				doingPirateBatch = 0;
 				room3occupied = 1;
 				pirateQueue->cust->roomNumber = 3;
+				printf("Pirate %d is entering room %d.\n", pirateQueue->cust->idNum, 3);
 				doThread(pirateQueue->cust);
 				pthread_mutex_unlock(&room3lock);
 				dequeuePirate();	
+				pthread_mutex_unlock(&room3lock);
+				break;
 			}
 			pthread_mutex_unlock(&room3lock);
 		case 2:
@@ -402,24 +526,32 @@ void checkRoomsPirate(int numTeams){
 			pthread_mutex_trylock(&room2lock);
 			if(!room2occupied)
 			{
-				printf("I got a room!\n");
+				numPiratesInside += 1;
+				doingPirateBatch = 0;
 				room2occupied = 1;
 				pirateQueue->cust->roomNumber = 2;
+				printf("Pirate %d is entering room %d.\n", pirateQueue->cust->idNum, 2);
 				doThread(pirateQueue->cust);
 				pthread_mutex_unlock(&room2lock);
 				dequeuePirate();
+				pthread_mutex_unlock(&room2lock);
+				break;
 			}
 			pthread_mutex_unlock(&room2lock);
 			
 			pthread_mutex_trylock(&room1lock);
 			if(!room1occupied)
 			{
-				printf("I got a room!");
+				numPiratesInside += 1;
+				doingPirateBatch = 0;
 				room1occupied = 1;
 				pirateQueue->cust->roomNumber = 1;
+				printf("Pirate %d is entering room %d.\n", pirateQueue->cust->idNum, 1);
 				doThread(pirateQueue->cust);
 				pthread_mutex_unlock(&room1lock);
 				dequeuePirate();
+				pthread_mutex_unlock(&room1lock);
+				break;
 			}
 			pthread_mutex_unlock(&room1lock);
 	}
@@ -433,11 +565,16 @@ void checkRoomsNinja(int numTeams){
 			pthread_mutex_trylock(&room4lock);
 			if(!room4occupied)
 			{
+				numNinjasInside += 1;
+				doingPirateBatch = 1;
 				room4occupied = 1;
 				ninjaQueue->cust->roomNumber = 4;
+				printf("Ninja %d is entering room %d.\n", ninjaQueue->cust->idNum, 4);
 				doThread(ninjaQueue->cust);
 				pthread_mutex_unlock(&room4lock);
 				dequeueNinja();	
+				pthread_mutex_unlock(&room4lock);
+				break;
 			}
 			pthread_mutex_unlock(&room4lock);
 		case 3:
@@ -445,11 +582,16 @@ void checkRoomsNinja(int numTeams){
 			pthread_mutex_trylock(&room3lock);
 			if(!room3occupied)
 			{
+				numNinjasInside += 1;
+				doingPirateBatch = 1;
 				room3occupied = 1;
 				ninjaQueue->cust->roomNumber = 3;
+				printf("Ninja %d is entering room %d.\n", ninjaQueue->cust->idNum, 3);
 				doThread(ninjaQueue->cust);
 				pthread_mutex_unlock(&room3lock);
 				dequeueNinja();	
+				pthread_mutex_unlock(&room3lock);
+				break;
 			}
 			pthread_mutex_unlock(&room3lock);
 		case 2:
@@ -457,28 +599,97 @@ void checkRoomsNinja(int numTeams){
 			pthread_mutex_trylock(&room2lock);
 			if(!room2occupied)
 			{
-				printf("I got a room!\n");
+				numNinjasInside += 1;
+				doingPirateBatch = 1;
 				room2occupied = 1;
 				ninjaQueue->cust->roomNumber = 2;
+				printf("Ninja %d is entering room %d.\n", ninjaQueue->cust->idNum, 2);
 				doThread(ninjaQueue->cust);
 				pthread_mutex_unlock(&room2lock);
 				dequeueNinja();
+				pthread_mutex_unlock(&room2lock);
+				break;
 			}
 			pthread_mutex_unlock(&room2lock);
 			
 			pthread_mutex_trylock(&room1lock);
 			if(!room1occupied)
 			{
-				printf("I got a room!");
+				numNinjasInside += 1;
+				doingPirateBatch = 1;
 				room1occupied = 1;
 				ninjaQueue->cust->roomNumber = 1;
+				printf("Ninja %d is entering room %d.\n", ninjaQueue->cust->idNum, 1);
 				doThread(ninjaQueue->cust);
 				pthread_mutex_unlock(&room1lock);
 				dequeueNinja();
+				pthread_mutex_unlock(&room1lock);
+				break;
 			}
 			pthread_mutex_unlock(&room1lock);
 	}
 }
+
+void initializeGlobals(int numTeams)
+{
+	switch(numTeams)
+	{
+		case 4:
+			pthread_mutex_init(&room4lock, NULL);	
+			room4occupied = 0;
+		case 3:
+			pthread_mutex_init(&room3lock, NULL);	
+			room3occupied = 0;
+		case 2:
+			pthread_mutex_init(&room1lock, NULL);	
+			room2occupied = 0;
+			pthread_mutex_init(&room2lock, NULL);	
+			room1occupied = 0;
+			pthread_mutex_init(&pirateLock, NULL);
+			pthread_mutex_init(&ninjaLock, NULL);
+			break;
+	}
+	numPiratesInside = 0;
+	numNinjasInside = 0;
+	pirateQueue = NULL;
+	ninjaQueue = NULL;
+	doingPirateBatch = 1;
+	initDayReport(numTeams);
+}
+
+/*
+	Function to print out statistics at the end of the simulation.
+*/
+void printStats(int numTeams)
+{
+	printf("\n--DAY'S REPORT--\n\n");
+	pthread_mutex_lock(&reportLock);
+	switch(numTeams)
+	{
+		case 4:
+			printf("Team 4 was busy for %d minutes.\nTeam 4 was free for %d minutes.\n\n", 
+					report->teamBusyTimes[3], report->teamFreeTimes[3]);
+		case 3:
+			
+			printf("Team 3 was busy for %d minutes.\nTeam 3 was free for %d minutes.\n\n", 
+					report->teamBusyTimes[2], report->teamFreeTimes[2]);
+		case 2:
+
+			printf("Team 2 was busy for %d minutes.\nTeam 2 was free for %d minutes.\n\n", 
+					report->teamBusyTimes[1], report->teamFreeTimes[1]);
+			printf("Team 1 was busy for %d minutes.\nTeam 1 was free for %d minutes.\n\n", 
+					report->teamBusyTimes[0], report->teamFreeTimes[0]);
+	}
+	printf("Gross Revenue: %d gold pieces.\n\n", report->grossRevenue);
+	printf("Gold per Visit: %d gold pieces.\n\n",
+			((report->grossRevenue - (5*numTeams))/(report->goldPerVisit)));
+	printf("Total Profits: %d gold pieces.\n\n", (report->grossRevenue - (5*numTeams)));
+	printf("Unhappy Customers: %d.\n\n", report->unhappyCustomers);
+
+	pthread_mutex_unlock(&reportLock);
+}
+
+
 
 int main(int argc, char *argv[])
 {
@@ -506,7 +717,6 @@ int main(int argc, char *argv[])
 	// Create bills for both the pirates and the ninjas
 	struct bill *pirateBill;
 	struct bill *ninjaBill;
-	struct dayReport *todayReport;
 	// If the user's input violates any of the min or max numbers, let them know and stop execution.
 	if((4 < numCostumingTeams) || (numCostumingTeams < 2))
 	{
@@ -551,18 +761,18 @@ int main(int argc, char *argv[])
 	pirateBill = initBill(numPirates);
 	ninjaBill = initBill(numNinjas);
 
-	todayReport = initDayReport(numCostumingTeams);
 	initializeGlobals(numCostumingTeams);
 
 	for(int i=0; i<numPirates; i++)
 	{
 		// Create the pirate
-		struct customer *currentPirate = createCustomer(avgPirateArrival, avgPirateTime, i);
+		struct customer *currentPirate = createCustomer(avgPirateArrival, avgPirateTime, i, 1);
 		// Put the pirate into the line
 	//	printf("Pirate %d will take %d to clothe, and will mosey on over at %d.\n", 
 	//			i, currentPirate->costumingTime, currentPirate->arrivalTime);
 		enqueuePirate(currentPirate);
-		struct node *current = pirateQueue;
+	
+		/*struct node *current = pirateQueue;
 		printf("\nThe queue currently contains: \n");
 		for(int j = 0; j<=i; j++)
 		{
@@ -570,12 +780,13 @@ int main(int argc, char *argv[])
 			printf("Pirate %d arriving at %d.\n", current->cust->idNum, current->cust->arrivalTime);
 			current = current->next;
 		}
+		*/
 	}
 
 	for(int i=0; i<numNinjas; i++)
 	{
 		// Create the ninja
-		struct customer *currentNinja = createCustomer(avgNinjaArrival, avgNinjaTime, i);		
+		struct customer *currentNinja = createCustomer(avgNinjaArrival, avgNinjaTime, i, 0);		
 		// Put the ninja into the line
 		// printf("Ninja %d will take %d to clothe, and will appear at %d.\n", 
 		//		i, currentNinja->costumingTime, currentNinja->arrivalTime);
@@ -587,41 +798,77 @@ int main(int argc, char *argv[])
 	gettimeofday(&startTime, NULL);
 	int startInt = (startTime.tv_usec / 1000) + (startTime.tv_sec);	
 	*/
-	int secondsPassed = 0;	
-	while(secondsPassed < SIMULATION_LENGTH)
+	while((simulationTime < SIMULATION_LENGTH))
 	{
 		// If there is someone in the pirate line, check if it's pirate time
-		if(pirateQueue != NULL)
+		pthread_mutex_lock(&batchLock);
+		if(doingPirateBatch)
 		{
-			if(pirateQueue->cust->arrivalTime <= secondsPassed)
+			pthread_mutex_lock(&ninjaLock);
+			if(numNinjasInside == 0)
 			{
-				pthread_mutex_lock(&ninjaLock);
-				if(numNinjasInside == 0)
+				pthread_mutex_lock(&pirateLock);
+				while((pirateQueue != NULL) && 
+						(pirateQueue->cust->arrivalTime <= simulationTime) && 
+						(numPiratesInside < numCostumingTeams))
 				{
 					checkRoomsPirate(numCostumingTeams);
 				}
-				pthread_mutex_unlock(&ninjaLock);
+				pthread_mutex_unlock(&pirateLock);
+				
 			}
+			pthread_mutex_unlock(&ninjaLock);
 		}
-		// If anyone has finished, ask if they are coming back
+		else
+		{
+			pthread_mutex_lock(&pirateLock);
+			if(numPiratesInside == 0)
+			{
+				pthread_mutex_lock(&ninjaLock);
+				while((ninjaQueue != NULL) && 
+						(ninjaQueue->cust->arrivalTime <= simulationTime) && 
+						(numNinjasInside < numCostumingTeams) )
+				{
+					checkRoomsNinja(numCostumingTeams);
+				}
+				pthread_mutex_unlock(&ninjaLock);
+				
+			}
+			pthread_mutex_unlock(&pirateLock);
+		}
+		pthread_mutex_unlock(&batchLock);
 
+		pthread_mutex_lock(&reportLock);
+		updateDayReport(numCostumingTeams);	
+		pthread_mutex_unlock(&reportLock);
 		// Record whether the staff was idle or working (we should initialize the day report with appropriate number of ints for busy time and free time	
+		pthread_mutex_lock(&batchLock);
+		pthread_mutex_lock(&pirateLock);
+		// If we are currently doing a batch of pirates, then don't let any more in
+		if((numPiratesInside > 0) && (doingPirateBatch))
+		{
+			doingPirateBatch = 0;
+		}
+		pthread_mutex_unlock(&pirateLock);
+		pthread_mutex_lock(&ninjaLock);
+		// If we are doing a batch of ninjas, don't let any more in.
+		if((numNinjasInside > 0) && (!doingPirateBatch))
+		{
+			doingPirateBatch = 1;
+		}
+		pthread_mutex_unlock(&ninjaLock);
+		pthread_mutex_unlock(&batchLock);
 		printf("Nothing left to do this second, sleeping.\n");
 		sleep(1);
-		
-		secondsPassed++;
+		simulationTime++;
 				
 
 	}
 	//TODO
-	// Create behavior for threads leaving (ie they unlock and exit the store)
 	// Make it fair
-	// Update customer struct to contain room number, and pass it into pthread create
-	// If anyone has finished, then ask if they are coming back and record info about their visit
-	// put them back into the end of the line with their new time.
 	// 
-	// Calculate expenses.
-	
+
+	printStats(numCostumingTeams);
 	// Free the memory taken by each faction's bill	
 	freeBill(pirateBill);
 	freeBill(ninjaBill);

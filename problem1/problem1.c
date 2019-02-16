@@ -84,7 +84,7 @@ void freeBill(struct bill *theBill)
 */
 struct dayReport
 {
-	int averageQueueLength;
+//	int averageQueueLength;
 	int grossRevenue; // Amount of gold
 	int goldPerVisit; // Total gold / total visits
 	// Calculate profit by doing (grossRevenue - (5 * numTeams))
@@ -99,7 +99,7 @@ struct dayReport
 void initDayReport(int numTeams)
 {
 	struct dayReport *newReport = malloc(sizeof(struct dayReport));
-	newReport->averageQueueLength = 0;
+	//newReport->averageQueueLength = 0;
 	newReport->grossRevenue = 0;
 	newReport->goldPerVisit = 0;
 	newReport->teamBusyTimes = malloc(numTeams * sizeof(int));
@@ -864,10 +864,8 @@ int main(int argc, char *argv[])
 				
 
 	}
-	//TODO
-	// Make it fair
-	// 
 
+	freeReport(report);
 	printStats(numCostumingTeams);
 	// Free the memory taken by each faction's bill	
 	freeBill(pirateBill);

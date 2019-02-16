@@ -1,3 +1,120 @@
 EXPLANATION FOR PIRATES AND NINJAS SOLUTION
 
+My solution for this problem works on a batch based system. How it works is that it takes 
+as many pirates as it can at one time. We will then costume those pirates until they are completed.
+Once all of the pirates are out, we will grab as many ninjas as we can and do them. 
+This garuantees fairness by never depriving one group of the dressing room. It is fast
+because we only have empty dressing rooms if one customer finishes before another. 
+
+This solution uses locks.
+
+Some sample outputs I used to test the program were these.
+./problem1 2 10 10 10 10 10 10
+./problem1 2 20 20 10 8 30 60
+./problem1 4 50 50 10 8 100 200
+
+Here is some output from a sample run.
+I ended it early, but it is clear to see the batch system at work.
+./problem1 4 10 10 10 10 10 10
+
+thing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Pirate 9 is entering room 4.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Pirate number 9 is leaving room 4.
+They won't be coming back today.
+Ninja 8 is entering room 4.
+Ninja 2 is entering room 3.
+Ninja 3 is entering room 2.
+Ninja 4 is entering room 1.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Ninja number 3 is leaving room 2.
+They won't be coming back today.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Ninja number 2 is leaving room 3.
+They won't be coming back today.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Ninja number 8 is leaving room 4.
+They won't be coming back today.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Ninja number 4 is leaving room 1.
+They won't be coming back today.
+Pirate 2 is entering room 4.
+Pirate 3 is entering room 3.
+Pirate 5 is entering room 2.
+Pirate 6 is entering room 1.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Pirate number 6 is leaving room 1.
+They won't be coming back today.
+Pirate number 5 is leaving room 2.
+They won't be coming back today.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Pirate number 2 is leaving room 4.
+They will be returning at 41.
+Nothing left to do this second, sleeping.
+Pirate number 3 is leaving room 3.
+They won't be coming back today.
+Ninja 1 is entering room 4.
+Ninja 5 is entering room 3.
+Ninja 7 is entering room 2.
+Ninja 0 is entering room 1.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Ninja number 1 is leaving room 4.
+They won't be coming back today.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Ninja number 7 is leaving room 2.
+They won't be coming back today.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Ninja number 0 is leaving room 1.
+They won't be coming back today.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+Ninja number 5 is leaving room 3.
+They won't be coming back today.
+Pirate 8 is entering room 4.
+Pirate 4 is entering room 3.
+Pirate 1 is entering room 2.
+Pirate 7 is entering room 1.
+Nothing left to do this second, sleeping.
+Nothing left to do this second, sleeping.
+^C
 

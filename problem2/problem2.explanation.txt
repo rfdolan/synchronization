@@ -1,0 +1,154 @@
+EXPLANATION FOR CAR PROBLEM
+
+Question 1.
+The Minnesotan drivers ensure that there are no accidents, however they are inefficent because
+if two cars approach the intersection both wanting to turn right, thry should go at the same time,
+but in Minnesota they will wait for the other to finish, taking twich as much time.
+
+Question 2.
+In the most basic example, if four cars approach and they all want to turn left, they will each
+enter a quadrant and will not be able to progress. To prevent this, we could provide a total
+ordering to the order in which locks are grabbed, so  that every car has to grab the northwest
+quadrant first, then northeast, etc. This ensures that no two cars can acquire the locks that
+another will require.
+
+
+My implementation takes no arguments.
+It works by having an ordering in which the quadrants are acquired: northwest, northeast, southwest, southeast.
+This order ensures that no car can get sections that a car needs but hasn't acquired yet.
+When a car fails to get a section, it lets go of all the sections that it had.
+
+This implementation uses semaphores.
+
+Below is the output from a sample run, which was terminated early because it goes forever.
+
+Car 0 is approaching from direction 3 going to direction 2.
+Car 0 is cleared to go through the southeast quadrant.
+Car 0 no longer needs the southeast quadrant.
+Car 0 made it through the intersection!
+Car 3 is approaching from direction 2 going to direction 0.
+Car 3 is cleared to go through the northeast quadrant.
+Car 3 no longer needs the northeast quadrant.
+Car 3 made it through the intersection!
+Car 1 is approaching from direction 1 going to direction 3.
+Car 1 is cleared to go through the southwest quadrant.
+Car 1 no longer needs the southwest quadrant.
+Car 1 made it through the intersection!
+Car 7 is approaching from direction 0 going to direction 2.
+Car 7 is cleared to go through the northwest quadrant.
+Car 7 is cleared to go through the southwest quadrant.
+Car 7 is cleared to go through the southeast quadrant.
+Car 7 no longer needs the southeast quadrant.
+Car 7 no longer needs the southwest quadrant.
+Car 7 no longer needs the northwest quadrant.
+Car 7 made it through the intersection!
+Car 5 is approaching from direction 3 going to direction 2.
+Car 5 is cleared to go through the southeast quadrant.
+Car 5 no longer needs the southeast quadrant.
+Car 5 made it through the intersection!
+Car 11 is approaching from direction 2 going to direction 3.
+Car 11 is cleared to go through the northwest quadrant.
+Car 11 is cleared to go through the northeast quadrant.
+Car 11 is cleared to go through the southwest quadrant.
+Car 11 no longer needs the southwest quadrant.
+Car 11 no longer needs the northeast quadrant.
+Car 11 no longer needs the northwest quadrant.
+Car 11 made it through the intersection!
+Car 2 is approaching from direction 1 going to direction 3.
+Car 2 is cleared to go through the southwest quadrant.
+Car 2 no longer needs the southwest quadrant.
+Car 2 made it through the intersection!
+Car 8 is approaching from direction 0 going to direction 3.
+Car 8 is cleared to go through the northwest quadrant.
+Car 8 is cleared to go through the southwest quadrant.
+Car 8 no longer needs the southwest quadrant.
+Car 8 no longer needs the northwest quadrant.
+Car 8 made it through the intersection!
+Car 6 is approaching from direction 3 going to direction 2.
+Car 6 is cleared to go through the southeast quadrant.
+Car 6 no longer needs the southeast quadrant.
+Car 6 made it through the intersection!
+Car 13 is approaching from direction 2 going to direction 1.
+Car 13 is cleared to go through the northwest quadrant.
+Car 13 is cleared to go through the northeast quadrant.
+Car 13 no longer needs the northeast quadrant.
+Car 13 no longer needs the northwest quadrant.
+Car 13 made it through the intersection!
+Car 4 is approaching from direction 1 going to direction 2.
+Car 4 is cleared to go through the southwest quadrant.
+Car 4 is cleared to go through the southeast quadrant.
+Car 4 no longer needs the southeast quadrant.
+Car 4 no longer needs the southwest quadrant.
+Car 4 made it through the intersection!
+Car 9 is approaching from direction 0 going to direction 3.
+Car 9 is cleared to go through the northwest quadrant.
+Car 9 is cleared to go through the southwest quadrant.
+Car 9 no longer needs the southwest quadrant.
+Car 9 no longer needs the northwest quadrant.
+Car 9 made it through the intersection!
+Car 12 is approaching from direction 3 going to direction 1.
+Car 12 is cleared to go through the northwest quadrant.
+Car 12 is cleared to go through the northeast quadrant.
+Car 12 is cleared to go through the southeast quadrant.
+Car 12 no longer needs the southeast quadrant.
+Car 12 no longer needs the northeast quadrant.
+Car 12 no longer needs the northwest quadrant.
+Car 12 made it through the intersection!
+Car 16 is approaching from direction 2 going to direction 1.
+Car 16 is cleared to go through the northwest quadrant.
+Car 16 is cleared to go through the northeast quadrant.
+Car 16 no longer needs the northeast quadrant.
+Car 16 no longer needs the northwest quadrant.
+Car 16 made it through the intersection!
+Car 10 is approaching from direction 1 going to direction 2.
+Car 10 is cleared to go through the southwest quadrant.
+Car 10 is cleared to go through the southeast quadrant.
+Car 10 no longer needs the southeast quadrant.
+Car 10 no longer needs the southwest quadrant.
+Car 10 made it through the intersection!
+Car 15 is approaching from direction 0 going to direction 3.
+Car 15 is cleared to go through the northwest quadrant.
+Car 15 is cleared to go through the southwest quadrant.
+Car 15 no longer needs the southwest quadrant.
+Car 15 no longer needs the northwest quadrant.
+Car 15 made it through the intersection!
+Car 14 is approaching from direction 3 going to direction 1.
+Car 14 is cleared to go through the northwest quadrant.
+Car 14 is cleared to go through the northeast quadrant.
+Car 14 is cleared to go through the southeast quadrant.
+Car 14 no longer needs the southeast quadrant.
+Car 14 no longer needs the northeast quadrant.
+Car 14 no longer needs the northwest quadrant.
+Car 14 made it through the intersection!
+Car 19 is approaching from direction 2 going to direction 0.
+Car 19 is cleared to go through the northeast quadrant.
+Car 19 no longer needs the northeast quadrant.
+Car 19 made it through the intersection!
+Car 17 is approaching from direction 1 going to direction 3.
+Car 17 is cleared to go through the southwest quadrant.
+Car 17 no longer needs the southwest quadrant.
+Car 17 made it through the intersection!
+Car 18 is approaching from direction 0 going to direction 1.
+Car 18 is cleared to go through the northwest quadrant.
+Car 18 no longer needs the northwest quadrant.
+Car 18 made it through the intersection!
+Car 0 is approaching from direction 3 going to direction 2.
+Car 0 is cleared to go through the southeast quadrant.
+Car 0 no longer needs the southeast quadrant.
+Car 0 made it through the intersection!
+Car 5 is approaching from direction 2 going to direction 0.
+Car 5 is cleared to go through the northeast quadrant.
+Car 5 no longer needs the northeast quadrant.
+Car 5 made it through the intersection!
+Car 3 is approaching from direction 1 going to direction 2.
+Car 3 is cleared to go through the southwest quadrant.
+Car 3 is cleared to go through the southeast quadrant.
+Car 3 no longer needs the southeast quadrant.
+Car 3 no longer needs the southwest quadrant.
+Car 3 made it through the intersection!
+Car 7 is approaching from direction 0 going to direction 1.
+Car 7 is cleared to go through the northwest quadrant.
+Car 7 no longer needs the northwest quadrant.
+Car 7 made it through the intersection!
+^C
+

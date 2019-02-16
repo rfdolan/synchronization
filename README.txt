@@ -22,5 +22,10 @@ I solved the problem using locks, and you can read more in the file problem1/pro
 
 MASSACHUSETTS DRIVERS
 
-This section left intentionally blank
+This project can be run by calling make and then going to the directory problem2
+and running ./problem2 with no arguments
 
+The program is meant to simulate a four way intersection. It utilizes threads and semaphores to
+keep the program efficent and fair.
+
+You can read more about the implementation in the file problem2/problem2.exlplanation.txt
